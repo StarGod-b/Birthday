@@ -557,300 +557,300 @@
 
   function attachSwipeEvents(element, direction, onTrigger) {
     element.addEventListener('touchstart', e => {
-      if (isDrawing) return;
-      startY = e.touches[0].clientY;
-      isSwiping = true;
-    });
+        if (isDrawing) return;
+        startY = e.touches[0].clientY;
+        isSwiping = true;
+      });
 
-    element.addEventListener('touchend', e => {
-      if (!isSwiping || isDrawing) return;
-      isSwiping = false;
-      let diffY = e.changedTouches[0].clientY - startY;
-      if ((direction === 'up' && -diffY > 100) || (direction === 'down' && diffY > 100)) {
-        onTrigger();
-      } else {
-        element.style.opacity = 1;
-      }
-    });
+      element.addEventListener('touchend', e => {
+        if (!isSwiping || isDrawing) return;
+        isSwiping = false;
+        let diffY = e.changedTouches[0].clientY - startY;
+        if ((direction === 'up' && -diffY > 100) || (direction === 'down' && diffY > 100)) {
+          onTrigger();
+        } else {
+          element.style.opacity = 1;
+        }
+      });
 
-    element.addEventListener('mousedown', e => {
-      if (isDrawing) return;
-      startY = e.clientY;
-      isSwiping = true;
-    });
+      element.addEventListener('mousedown', e => {
+        if (isDrawing) return;
+        startY = e.clientY;
+        isSwiping = true;
+      });
 
-    element.addEventListener('mouseup', e => {
-      if (!isSwiping || isDrawing) return;
-      isSwiping = false;
-      let diffY = e.clientY - startY;
-      if ((direction === 'up' && -diffY > 100) || (direction === 'down' && diffY > 100)) {
-        onTrigger();
-      } else {
-        element.style.opacity = 1;
-      }
-    });
-  }
+      element.addEventListener('mouseup', e => {
+        if (!isSwiping || isDrawing) return;
+        isSwiping = false;
+        let diffY = e.clientY - startY;
+        if ((direction === 'up' && -diffY > 100) || (direction === 'down' && diffY > 100)) {
+          onTrigger();
+        } else {
+          element.style.opacity = 1;
+        }
+      });
+    }
 
-  
+    
 
-  attachSwipeEvents(lockScreen, 'up', showPatternScreen);
-  attachSwipeEvents(patternScreen, 'down', showLockScreen);
+    attachSwipeEvents(lockScreen, 'up', showPatternScreen);
+    attachSwipeEvents(patternScreen, 'down', showLockScreen);
 
-  function initPatternLock() {
-    const dots = document.querySelectorAll('.pattern-dot');
-    const canvas = document.getElementById('patternCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 300;
-    canvas.height = 300;
+    function initPatternLock() {
+      const dots = document.querySelectorAll('.pattern-dot');
+      const canvas = document.getElementById('patternCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 300;
+      canvas.height = 300;
 
-    // Ganti warna garis menjadi putih dengan glow
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-    ctx.shadowBlur = 8;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-
-    isDrawing = false;
-    let path = [];
-    const correctPattern = [1, 2, 3, 5, 7, 8, 9];
-    let failedAttempts = 0;
-
-    // Style garis
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-    ctx.shadowBlur = 8;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-
-
-    window.resetPattern = function () {
-      path = [];
-      ctx.clearRect(0, 0, 300, 300);
-      dots.forEach(dot => dot.classList.remove('active'));
-      patternError.textContent = '';
+      // Ganti warna garis menjadi putih dengan glow
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-    };
-    function getDotPosition(dot) {
-      const rect = dot.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      return {
-        x: rect.left + rect.width/2 - canvasRect.left,
-        y: rect.top + rect.height/2 - canvasRect.top,
-        id: parseInt(dot.getAttribute('data-id'))
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+
+      isDrawing = false;
+      let path = [];
+      const correctPattern = [1, 2, 3, 5, 7, 8, 9];
+      let failedAttempts = 0;
+
+      // Style garis
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+
+
+      window.resetPattern = function () {
+        path = [];
+        ctx.clearRect(0, 0, 300, 300);
+        dots.forEach(dot => dot.classList.remove('active'));
+        patternError.textContent = '';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
       };
-    }
-      // Dapatkan semua posisi titik
-    const dotPositions = [];
-    dots.forEach(dot => {
-      dotPositions.push(getDotPosition(dot));
-    });
-
-     // Fungsi mencari titik terdekat
-     function findNearestDot(x, y) {
-      let minDistance = 50; // Jarak maksimum (pixel)
-      let nearestDot = null;
-      
-      dotPositions.forEach(pos => {
-        const distance = Math.sqrt(Math.pow(pos.x - x, 2) + Math.pow(pos.y - y, 2));
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearestDot = pos;
-        }
-      });
-      
-      return nearestDot;
-    }
-
-         // Event untuk memulai menggambar
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('touchstart', function(e) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const rect = canvas.getBoundingClientRect();
-      startDrawing({
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-    }, { passive: false });
-
-    // Event untuk menggerakkan jari/stylus
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('touchmove', function(e) {
-      e.preventDefault();
-      if (!isDrawing) return;
-      const touch = e.touches[0];
-      draw({
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-    }, { passive: false });
-
-    // Event untuk mengakhiri
-    canvas.addEventListener('mouseup', endPattern);
-    canvas.addEventListener('touchend', endPattern);
-
-    function startDrawing(e) {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      const dot = findNearestDot(x, y);
-      if (dot) {
-        if (!path.includes(dot.id)) {
-          path.push(dot.id);
-          dots[dot.id - 1].classList.add('active');
-          ctx.beginPath();
-          ctx.moveTo(dot.x, dot.y);
-          isDrawing = true;
-        }
+      function getDotPosition(dot) {
+        const rect = dot.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width/2 - canvasRect.left,
+          y: rect.top + rect.height/2 - canvasRect.top,
+          id: parseInt(dot.getAttribute('data-id'))
+        };
       }
-    }
+        // Dapatkan semua posisi titik
+      const dotPositions = [];
+      dots.forEach(dot => {
+        dotPositions.push(getDotPosition(dot));
+      });
 
-    function draw(e) {
-      if (!isDrawing) return;
-      
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      // Tarik garis ke posisi jari
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      
-      // Cek apakah mendekati titik lain
-      const dot = findNearestDot(x, y);
-      if (dot && !path.includes(dot.id)) {
-        path.push(dot.id);
-        dots[dot.id - 1].classList.add('active');
+      // Fungsi mencari titik terdekat
+      function findNearestDot(x, y) {
+        let minDistance = 50; // Jarak maksimum (pixel)
+        let nearestDot = null;
         
-        // Lompat ke titik baru
-        ctx.lineTo(dot.x, dot.y);
-        ctx.stroke();
+        dotPositions.forEach(pos => {
+          const distance = Math.sqrt(Math.pow(pos.x - x, 2) + Math.pow(pos.y - y, 2));
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestDot = pos;
+          }
+        });
+        
+        return nearestDot;
       }
-    }
-    dots.forEach(dot => {
-      dot.addEventListener('mousedown', startPattern);
-      dot.addEventListener('touchstart', function (e) {
+
+          // Event untuk memulai menggambar
+      canvas.addEventListener('mousedown', startDrawing);
+      canvas.addEventListener('touchstart', function(e) {
         e.preventDefault();
-        startPattern.call(this, e);
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        startDrawing({
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
       }, { passive: false });
 
-      dot.addEventListener('mouseover', drawPattern);
-      dot.addEventListener('touchmove', handleTouchMove, { passive: false });
-    });
+      // Event untuk menggerakkan jari/stylus
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        if (!isDrawing) return;
+        const touch = e.touches[0];
+        draw({
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+      }, { passive: false });
 
-    canvas.addEventListener('mouseup', endPattern);
-    canvas.addEventListener('touchend', endPattern);
-    dots.forEach(dot => {
-      dot.addEventListener('mouseup', endPattern);
-      dot.addEventListener('touchend', endPattern);
-    });
+      // Event untuk mengakhiri
+      canvas.addEventListener('mouseup', endPattern);
+      canvas.addEventListener('touchend', endPattern);
 
-    function startPattern(e) {
-      e.preventDefault();
-      isDrawing = true;
-      const dotId = parseInt(this.getAttribute('data-id'));
-      if (!path.includes(dotId)) {
-        path.push(dotId);
-        this.classList.add('active');
-        const rect = this.getBoundingClientRect();
-        const x = rect.left + rect.width / 2 - canvas.getBoundingClientRect().left;
-        const y = rect.top + rect.height / 2 - canvas.getBoundingClientRect().top;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-      }
-    }
-
-
-    function drawPattern(e) {
-      if (!isDrawing) return;
-      e.preventDefault();
-      const dotId = parseInt(this.getAttribute('data-id'));
-      if (!path.includes(dotId)) {
-        path.push(dotId);
-        this.classList.add('active');
-        const rect = this.getBoundingClientRect();
-        const x = rect.left + rect.width / 2 - canvas.getBoundingClientRect().left;
-        const y = rect.top + rect.height / 2 - canvas.getBoundingClientRect().top;
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-    }
-
-    function handleTouchMove(e) {
-      if (!isDrawing) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
-      for (let el of elements) {
-        if (el.classList.contains('.pattern-dot')) {
-          const dotId = parseInt(el.getAttribute('data-id'));
-          if (!path.includes(dotId)) {
-            path.push(dotId);
-            el.classList.add('active');
-            const rect = el.getBoundingClientRect();
-            const x = rect.left + rect.width / 2 - canvas.getBoundingClientRect().left;
-            const y = rect.top + rect.height / 2 - canvas.getBoundingClientRect().top;
-            ctx.lineTo(x, y);
-            ctx.stroke();
+      function startDrawing(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const dot = findNearestDot(x, y);
+        if (dot) {
+          if (!path.includes(dot.id)) {
+            path.push(dot.id);
+            dots[dot.id - 1].classList.add('active');
+            ctx.beginPath();
+            ctx.moveTo(dot.x, dot.y);
+            isDrawing = true;
           }
         }
       }
-    }
 
-    function endPattern() {
-      if (!isDrawing) return;
-      isDrawing = false;
-      if (arraysEqual(path, correctPattern)) {
-        patternError.textContent = '';
-        const successMsg = document.createElement('div');
-        successMsg.className = 'success-message';
-        successMsg.textContent = 'Pola benar!';
-        patternScreen.appendChild(successMsg);
-        setTimeout(() => {
-          window.location.href = 'main.html';
-        }, 1500);
-      } else {
-        failedAttempts++;
-        patternError.textContent = 'Pola salah. Coba lagi!';
-        patternError.style.color = '#ff6b6b';
-        ctx.strokeStyle = '#ff6b6b';
-        ctx.shadowColor = 'rgba(255, 107, 107, 0.5)';
+      function draw(e) {
+        if (!isDrawing) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Tarik garis ke posisi jari
+        ctx.lineTo(x, y);
         ctx.stroke();
         
-        // Setelah 3 kali gagal, tampilkan tombut clue lebih menonjol
-        if (failedAttempts >= 3) {
-          helpButton.style.background = "rgba(255, 255, 255, 0.2)";
-          helpButton.style.border = "1px solid rgba(255, 255, 255, 0.4)";
-          helpButton.style.color = "#fff";
+        // Cek apakah mendekati titik lain
+        const dot = findNearestDot(x, y);
+        if (dot && !path.includes(dot.id)) {
+          path.push(dot.id);
+          dots[dot.id - 1].classList.add('active');
+          
+          // Lompat ke titik baru
+          ctx.lineTo(dot.x, dot.y);
+          ctx.stroke();
         }
-        
-        setTimeout(resetPattern, 1000);
       }
-    }
+      dots.forEach(dot => {
+        dot.addEventListener('mousedown', startPattern);
+        dot.addEventListener('touchstart', function (e) {
+          e.preventDefault();
+          startPattern.call(this, e);
+        }, { passive: false });
 
-    function arraysEqual(a, b) {
-      return a.length === b.length && a.every((v, i) => v === b[i]);
+        dot.addEventListener('mouseover', drawPattern);
+        dot.addEventListener('touchmove', handleTouchMove, { passive: false });
+      });
+
+      canvas.addEventListener('mouseup', endPattern);
+      canvas.addEventListener('touchend', endPattern);
+      dots.forEach(dot => {
+        dot.addEventListener('mouseup', endPattern);
+        dot.addEventListener('touchend', endPattern);
+      });
+
+      function startPattern(e) {
+        e.preventDefault();
+        isDrawing = true;
+        const dotId = parseInt(this.getAttribute('data-id'));
+        if (!path.includes(dotId)) {
+          path.push(dotId);
+          this.classList.add('active');
+          const rect = this.getBoundingClientRect();
+          const x = rect.left + rect.width / 2 - canvas.getBoundingClientRect().left;
+          const y = rect.top + rect.height / 2 - canvas.getBoundingClientRect().top;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+        }
+      }
+
+
+      function drawPattern(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const dotId = parseInt(this.getAttribute('data-id'));
+        if (!path.includes(dotId)) {
+          path.push(dotId);
+          this.classList.add('active');
+          const rect = this.getBoundingClientRect();
+          const x = rect.left + rect.width / 2 - canvas.getBoundingClientRect().left;
+          const y = rect.top + rect.height / 2 - canvas.getBoundingClientRect().top;
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }
+      }
+
+      function handleTouchMove(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+        for (let el of elements) {
+          if (el.classList.contains('pattern-dot')) {
+            const dotId = parseInt(el.getAttribute('data-id'));
+            if (!path.includes(dotId)) {
+              path.push(dotId);
+              el.classList.add('active');
+              const rect = el.getBoundingClientRect();
+              const x = rect.left + rect.width / 2 - canvas.getBoundingClientRect().left;
+              const y = rect.top + rect.height / 2 - canvas.getBoundingClientRect().top;
+              ctx.lineTo(x, y);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      function endPattern() {
+        if (!isDrawing) return;
+        isDrawing = false;
+        if (arraysEqual(path, correctPattern)) {
+          patternError.textContent = '';
+          const successMsg = document.createElement('div');
+          successMsg.className = 'success-message';
+          successMsg.textContent = 'Pola benar!';
+          patternScreen.appendChild(successMsg);
+          setTimeout(() => {
+            window.location.href = 'main.html';
+          }, 1500);
+        } else {
+          failedAttempts++;
+          patternError.textContent = 'Pola salah. Coba lagi!';
+          patternError.style.color = '#ff6b6b';
+          ctx.strokeStyle = '#ff6b6b';
+          ctx.shadowColor = 'rgba(255, 107, 107, 0.5)';
+          ctx.stroke();
+          
+          // Setelah 3 kali gagal, tampilkan tombut clue lebih menonjol
+          if (failedAttempts >= 3) {
+            helpButton.style.background = "rgba(255, 255, 255, 0.2)";
+            helpButton.style.border = "1px solid rgba(255, 255, 255, 0.4)";
+            helpButton.style.color = "#fff";
+          }
+          
+          setTimeout(resetPattern, 1000);
+        }
+      }
+
+      function arraysEqual(a, b) {
+        return a.length === b.length && a.every((v, i) => v === b[i]);
+      }
+      
+      // Inisialisasi awal
+      resetPattern();
     }
     
-    // Inisialisasi awal
-    resetPattern();
-  }
-  
-  // Inisialisasi pattern lock saat halaman dimuat
-  window.onload = function() {
-    initPatternLock();
-    
-    // Debugging: Cek apakah gambar dimuat
-    const images = document.querySelectorAll('img');
-    images.forEach(img => {
-      img.onerror = () => {
-        console.error(`Gagal memuat gambar: ${img.src}`);
-        img.style.border = "2px solid red";
-      };
-    });
-  };
-</script>
-</body>
-</html>
+    // Inisialisasi pattern lock saat halaman dimuat
+    window.onload = function() {
+      initPatternLock();
+      
+      // Debugging: Cek apakah gambar dimuat
+      const images = document.querySelectorAll('img');
+      images.forEach(img => {
+        img.onerror = () => {
+          console.error(`Gagal memuat gambar: ${img.src}`);
+          img.style.border = "2px solid red";
+        };
+      });
+    };
+  </script>
+  </body>
+  </html>
