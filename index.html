@@ -238,6 +238,7 @@
       flex-direction: column;
       justify-content: center;
       background: transparent;
+      transition: transform 0.3s ease, opacity 0.5s;
     }
 
     .pattern-screen.active {
@@ -380,6 +381,12 @@
       text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
     
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    
     .success-message {
       font-size: 18px;
       color: #4caf50;
@@ -416,10 +423,10 @@
           <div class="notification-title">Pusat Pemberitahuan</div>
           
           <div class="notification-item">
-            <img src="img/taehyung2.jpeg" alt="Taehyung" class="profile-pic">
+            <img src="img/taehyung.jpg" alt="Taehyung" class="profile-pic">
             <div class="notification-content">
               <div class="notification-header">
-                <span class="contact-name">Taehyung</span>
+                <span class="contact-name">Taehyung🐯🩷</span>
                 <span class="time">now</span>
               </div>
               <div class="message">Selamat Ulang Tahun!</div>
@@ -430,7 +437,7 @@
             <img src="img/haechan2.jpeg" alt="Haechan" class="profile-pic">
             <div class="notification-content">
               <div class="notification-header">
-                <span class="contact-name">Haechan</span>
+                <span class="contact-name">Haechan😼✨</span>
                 <span class="time">now</span>
               </div>
               <div class="message">Selamat Ulang Tahun!</div>
@@ -509,6 +516,7 @@
   let isSwiping = false;
   let isDrawing = false;
   let failedAttempts = 0;
+  let isLocked = false; // moved from inside initPatternLock
 
   // Fungsi untuk menampilkan clue
   helpButton.addEventListener('click', () => {
@@ -520,15 +528,29 @@
   });
 
   function showLockScreen() {
+    // Reset pattern lock completely
+    resetPattern();
+    isDrawing = false;
+    isLocked = false;
+    
+    // Transition screens
     lockScreen.style.display = 'flex';
     setTimeout(() => lockScreen.classList.add('active'), 10);
-    resetPattern();
-    document.getElementById('patternCanvas').getContext('2d').clearRect(0, 0, 300, 300);
     lockScreen.style.opacity = 1;
+    
+    // Clear pattern canvas
+    const canvas = document.getElementById('patternCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    
+    // Hide pattern screen
     patternScreen.style.display = 'none';
     patternScreen.style.opacity = 0;
+    patternScreen.classList.remove('active');
+    
+    // Reset overlay
     overlay.classList.remove('blur');
-    overlay.classList.remove('dark');
     
     // Reset clue state
     clueText.classList.remove('show');
@@ -546,12 +568,26 @@
   }
 
   function showPatternScreen() {
+    // Reset pattern lock first
+    resetPattern();
+    isDrawing = false;
+    isLocked = false;
+    
+    // Transition screens
     lockScreen.style.opacity = 0;
+    lockScreen.classList.remove('active');
     overlay.classList.add('blur');
+    
+    // Ensure pattern screen is properly reset
     patternScreen.style.display = 'flex';
+    patternScreen.style.opacity = 1;
     patternScreen.classList.add('active');
-
-    // Reinitialize pattern lock
+    
+    // Clear any error messages
+    patternError.textContent = '';
+    patternError.style.animation = '';
+    
+    // Initialize pattern lock fresh
     initPatternLock();
   }
 
@@ -563,10 +599,11 @@
       });
 
       element.addEventListener('touchend', e => {
-        if (!isSwiping || isDrawing) return;
+        if (!isSwiping) return;
         isSwiping = false;
         let diffY = e.changedTouches[0].clientY - startY;
-        if ((direction === 'up' && -diffY > 100) || (direction === 'down' && diffY > 100)) {
+        if ((direction === 'up' && -diffY > 100 && !isDrawing) || 
+            (direction === 'down' && diffY > 100 && !isDrawing)) {
           onTrigger();
         } else {
           element.style.opacity = 1;
@@ -593,8 +630,89 @@
 
     
 
-    attachSwipeEvents(lockScreen, 'up', showPatternScreen);
-    attachSwipeEvents(patternScreen, 'down', showLockScreen);
+    // Improved swipe event handling
+    function handleSwipe(element, direction, callback) {
+      let startY, isSwiping = false;
+      
+      element.addEventListener('touchstart', e => {
+        if (element === patternScreen && isDrawing) {
+          isSwiping = false;
+          return;
+        }
+        startY = e.touches[0].clientY;
+        isSwiping = true;
+        e.preventDefault(); // Prevent scroll conflicts
+      }, {passive: false});
+      
+      element.addEventListener('touchmove', e => {
+        if (!isSwiping) return;
+        const currentY = e.touches[0].clientY;
+        const diffY = currentY - startY;
+        
+        // For swipe down on pattern screen, allow some movement before preventing default
+        if (element === patternScreen && direction === 'down' && diffY > 30) {
+          e.preventDefault();
+        }
+      }, {passive: false});
+      
+      element.addEventListener('touchend', e => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        const endY = e.changedTouches[0].clientY;
+        const diffY = endY - startY;
+        
+        // More sensitive swipe detection
+        const threshold = 80; // Reduced from 100
+        if ((direction === 'up' && diffY < -threshold) || 
+            (direction === 'down' && diffY > threshold)) {
+          callback();
+        }
+      }, {passive: true});
+      
+      // Mouse events for desktop testing
+      element.addEventListener('mousedown', e => {
+        if (element === patternScreen && isDrawing) return;
+        startY = e.clientY;
+        isSwiping = true;
+      });
+      
+      element.addEventListener('mousemove', e => {
+        if (!isSwiping) return;
+        // Only prevent default if we're actually swiping
+        if (Math.abs(e.clientY - startY) > 10) {
+          e.preventDefault();
+        }
+      });
+      
+      element.addEventListener('mouseup', e => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        const endY = e.clientY;
+        const diffY = endY - startY;
+        
+        const threshold = 80;
+        if ((direction === 'up' && diffY < -threshold) || 
+            (direction === 'down' && diffY > threshold)) {
+          callback();
+        }
+      });
+      
+      element.addEventListener('mouseleave', () => {
+        isSwiping = false;
+      });
+    }
+    
+    handleSwipe(lockScreen, 'up', () => {
+      if (!patternScreen.classList.contains('active')) {
+        showPatternScreen();
+      }
+    });
+    
+    handleSwipe(patternScreen, 'down', () => {
+      if (patternScreen.classList.contains('active')) {
+        showLockScreen();
+      }
+    });
 
     function initPatternLock() {
       const dots = document.querySelectorAll('.pattern-dot');
@@ -623,14 +741,6 @@
       ctx.lineCap = 'round';
 
 
-      window.resetPattern = function () {
-        path = [];
-        ctx.clearRect(0, 0, 300, 300);
-        dots.forEach(dot => dot.classList.remove('active'));
-        patternError.textContent = '';
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-      };
       function getDotPosition(dot) {
         const rect = dot.getBoundingClientRect();
         const canvasRect = canvas.getBoundingClientRect();
@@ -648,16 +758,22 @@
 
       // Fungsi mencari titik terdekat
       function findNearestDot(x, y) {
-        let minDistance = 50; // Jarak maksimum (pixel)
+        let minDistance = 40; // Reduced threshold for better accuracy
         let nearestDot = null;
         
-        dotPositions.forEach(pos => {
-          const distance = Math.sqrt(Math.pow(pos.x - x, 2) + Math.pow(pos.y - y, 2));
+        for (const pos of dotPositions) {
+          if (path.includes(pos.id)) continue; // Skip already selected dots
+          
+          const distance = Math.sqrt(
+            Math.pow(pos.x - x, 2) + 
+            Math.pow(pos.y - y, 2)
+          );
+          
           if (distance < minDistance) {
             minDistance = distance;
             nearestDot = pos;
           }
-        });
+        }
         
         return nearestDot;
       }
@@ -706,7 +822,19 @@
           }
         }
       }
+      function getTouchedCircle(x, y) {
+  for (let i = 0; i < circles.length; i++) {
+    const circle = circles[i];
+    const dx = x - circle.x;
+    const dy = y - circle.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
+    if (distance <= circle.radius * 1.5) { // lebih sensitif
+      return i + 1;
+    }
+  }
+  return null;
+}
       function draw(e) {
         if (!isDrawing) return;
         
@@ -718,15 +846,25 @@
         ctx.lineTo(x, y);
         ctx.stroke();
         
-        // Cek apakah mendekati titik lain
+        // Cek apakah mendekati titik lain dengan threshold lebih besar
         const dot = findNearestDot(x, y);
         if (dot && !path.includes(dot.id)) {
-          path.push(dot.id);
-          dots[dot.id - 1].classList.add('active');
+          // Check distance more accurately
+          const distance = Math.sqrt(
+            Math.pow(x - dot.x, 2) + 
+            Math.pow(y - dot.y, 2)
+          );
           
-          // Lompat ke titik baru
-          ctx.lineTo(dot.x, dot.y);
-          ctx.stroke();
+          if (distance < 40) { // Increased threshold
+            path.push(dot.id);
+            dots[dot.id - 1].classList.add('active');
+            
+            // Lompat ke titik baru
+            ctx.lineTo(dot.x, dot.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(dot.x, dot.y);
+          }
         }
       }
       dots.forEach(dot => {
@@ -761,6 +899,31 @@
           ctx.moveTo(x, y);
         }
       }
+      function getTouchingDot(x, y) {
+  const threshold = dotRadius * 2.5; // Lebih sensitif dari sebelumnya
+  for (let i = 0; i < dots.length; i++) {
+    const dot = dots[i];
+    const dx = x - dot.x;
+    const dy = y - dot.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance <= threshold && !path.includes(i + 1)) {
+      return i + 1;
+    }
+  }
+  return null;
+}
+
+let lastDrawTime = 0;
+
+function onDrawStart(e) {
+  const now = Date.now();
+  if (now - lastDrawTime < 200) return; // terlalu cepat
+  lastDrawTime = now;
+
+  isDrawing = true;
+  path = [];
+  drawStart(e);
+}
 
 
       function drawPattern(e) {
@@ -799,37 +962,93 @@
         }
       }
 
+      let isLocked = false; // untuk mencegah input saat reset
+
       function endPattern() {
-        if (!isDrawing) return;
+        if (!isDrawing || isLocked) return;
         isDrawing = false;
-        if (arraysEqual(path, correctPattern)) {
+        isLocked = true;
+
+        const drawnPath = [...path];
+        const originalStroke = ctx.strokeStyle;
+        const originalShadow = ctx.shadowColor;
+
+        // Clear any existing success message
+        const existingMsg = document.querySelector('.success-message');
+        if (existingMsg) existingMsg.remove();
+
+        if (arraysEqual(drawnPath, correctPattern)) {
           patternError.textContent = '';
           const successMsg = document.createElement('div');
           successMsg.className = 'success-message';
           successMsg.textContent = 'Pola benar!';
           patternScreen.appendChild(successMsg);
+          
+          // Disable further drawing
+          isLocked = true;
           setTimeout(() => {
             window.location.href = 'main.html';
           }, 1500);
-        } else {
-          failedAttempts++;
-          patternError.textContent = 'Pola salah. Coba lagi!';
-          patternError.style.color = '#ff6b6b';
-          ctx.strokeStyle = '#ff6b6b';
-          ctx.shadowColor = 'rgba(255, 107, 107, 0.5)';
-          ctx.stroke();
-          
-          // Setelah 3 kali gagal, tampilkan tombut clue lebih menonjol
-          if (failedAttempts >= 3) {
-            helpButton.style.background = "rgba(255, 255, 255, 0.2)";
-            helpButton.style.border = "1px solid rgba(255, 255, 255, 0.4)";
-            helpButton.style.color = "#fff";
-          }
-          
-          setTimeout(resetPattern, 1000);
-        }
-      }
+  } else {
+    failedAttempts++;
+    patternError.textContent = 'Pola salah. Coba lagi!';
+    patternError.style.color = '#ff6b6b';
+    patternError.style.animation = 'shake 0.5s';
+    
+    // Vibrate device if supported
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
+    }
+    
+    ctx.strokeStyle = '#ff6b6b';
+    ctx.shadowColor = 'rgba(255, 107, 107, 0.5)';
+    ctx.stroke();
+    
+    setTimeout(() => {
+      patternError.textContent = '';
+      patternError.style.animation = '';
+    }, 2000);
 
+    if (failedAttempts >= 3) {
+      helpButton.style.background = "rgba(255, 255, 255, 0.2)";
+      helpButton.style.border = "1px solid rgba(255, 255, 255, 0.4)";
+      helpButton.style.color = "#fff";
+    }
+    // Reset setelah 500ms (termasuk reset warna)
+    setTimeout(() => {
+      resetPattern();
+      ctx.strokeStyle = originalStroke;
+      ctx.shadowColor = originalShadow;
+      // Add cooldown period
+      setTimeout(() => {
+        isLocked = false;
+      }, 300);
+    }, 500);
+    function resetPattern() {
+      path = [];
+      isDrawing = false;
+      isLocked = false;
+      const ctx = document.getElementById('patternCanvas').getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath(); // Reset path drawing
+      // Reset all dots
+      document.querySelectorAll('.pattern-dot').forEach(dot => {
+        dot.classList.remove('active');
+      });
+      // Clear any error messages
+      patternError.textContent = '';
+      patternError.style.animation = '';
+      // Reset line style
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+    }
+    setTimeout(() => {
+  resetPattern();
+  isDrawing = false; // <== PENTING: Paksa off
+}, 300); // beri waktu agar reset selesai sebelum pengguna bisa mulai lagi
+
+  }
+}
       function arraysEqual(a, b) {
         return a.length === b.length && a.every((v, i) => v === b[i]);
       }
@@ -837,7 +1056,41 @@
       // Inisialisasi awal
       resetPattern();
     }
-    
+    function resetPattern() {
+      // Reset all pattern lock state
+      path = [];
+      isDrawing = false;
+      isLocked = false;
+      
+      // Clear canvas
+      const canvas = document.getElementById('patternCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      
+      // Reset dot styles
+      document.querySelectorAll('.pattern-dot').forEach(dot => {
+        dot.classList.remove('active');
+      });
+      
+      // Reset error/success messages
+      patternError.textContent = '';
+      patternError.style.animation = '';
+      const existingMsg = document.querySelector('.success-message');
+      if (existingMsg) existingMsg.remove();
+      
+      // Reset drawing style
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+      ctx.lineWidth = 3;
+      
+      // Reset clue button
+      clueText.classList.remove('show');
+      helpButton.textContent = "Butuh Petunjuk?";
+      helpButton.style.opacity = "1";
+      helpButton.style.cursor = "pointer";
+      helpButton.disabled = false;
+    };
     // Inisialisasi pattern lock saat halaman dimuat
     window.onload = function() {
       initPatternLock();
